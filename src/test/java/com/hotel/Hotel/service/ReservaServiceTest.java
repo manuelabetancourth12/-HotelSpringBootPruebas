@@ -37,7 +37,7 @@ class ReservaServiceTest {
     @DisplayName("Operaciones de Confirmación")
     class ConfirmacionTests {
 
-        // PRUEBA 1 (La tuya original)
+        // PRUEBA 1 
         @Test
         @DisplayName("Debe confirmar exitosamente cuando la reserva existe y está PENDIENTE")
         void debeConfirmarReservaExitosamente() {
