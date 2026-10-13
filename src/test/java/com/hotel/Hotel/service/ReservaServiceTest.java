@@ -37,6 +37,7 @@ class ReservaServiceTest {
     @DisplayName("Operaciones de Confirmación")
     class ConfirmacionTests {
 
+        // PRUEBA 1 (La tuya original)
         @Test
         @DisplayName("Debe confirmar exitosamente cuando la reserva existe y está PENDIENTE")
         void debeConfirmarReservaExitosamente() {
@@ -72,11 +73,105 @@ class ReservaServiceTest {
             assertEquals("CONFIRMADA", resultado.estado());
             assertEquals(EstadoReserva.CONFIRMADA, reservaExistente.getEstado());
 
-            // Verificación de comportamiento (Mocks)
+            // Verificación
             verify(reservaRepository, times(1)).findById(reservaId);
             verify(reservaRepository, times(1)).save(reservaExistente);
             verify(reservaMapper, times(1)).toResponse(reservaExistente);
         }
 
+        // PRUEBA 2
+        @Test
+        @DisplayName("Debe lanzar excepción al intentar confirmar una reserva inexistente")
+        void lanzaExcepcionAlConfirmarReservaInexistente() {
+            // Arrange
+            UUID reservaId = UUID.randomUUID();
+            when(reservaRepository.findById(reservaId)).thenReturn(Optional.empty());
+
+            // Act & Assert
+            IllegalArgumentException excepcion = assertThrows(IllegalArgumentException.class, () -> {
+                reservaService.confirmar(reservaId);
+            });
+
+            assertEquals("Reserva no encontrada", excepcion.getMessage());
+            verify(reservaRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Operaciones de Cancelación")
+    class CancelacionTests {
+
+        // PRUEBA 3
+        @Test
+        @DisplayName("Debe cancelar exitosamente una reserva existente")
+        void debeCancelarReservaExitosamente() {
+            // Arrange
+            UUID reservaId = UUID.randomUUID();
+            Cliente cliente = new Cliente("Carlos Ruiz", "carlos@empresa.com");
+            Habitacion habitacion = new HabitacionEstandar("301", 2, 150.0, 1);
+            RangoFechas fechas = new RangoFechas(LocalDateTime.now().plusDays(2), LocalDateTime.now().plusDays(5));
+            Reserva reservaExistente = new Reserva(cliente, habitacion, fechas);
+
+            ReservaResponse responseEsperado = new ReservaResponse(
+                    reservaId, "Carlos Ruiz", "301", fechas.fechaInicio(), fechas.fechaFin(), 450.0, "CANCELADA");
+
+            when(reservaRepository.findById(reservaId)).thenReturn(Optional.of(reservaExistente));
+            when(reservaRepository.save(any(Reserva.class))).thenAnswer(i -> i.getArgument(0));
+            when(reservaMapper.toResponse(any(Reserva.class))).thenReturn(responseEsperado);
+
+            // Act
+            ReservaResponse resultado = reservaService.cancelar(reservaId);
+
+            // Assert
+            assertNotNull(resultado);
+            assertEquals("CANCELADA", resultado.estado());
+            assertEquals(EstadoReserva.CANCELADA, reservaExistente.getEstado());
+            
+            verify(reservaRepository, times(1)).findById(reservaId);
+            verify(reservaRepository, times(1)).save(reservaExistente);
+        }
+    }
+
+    @Nested
+    @DisplayName("Operaciones de Consulta")
+    class ConsultaTests {
+
+        // PRUEBA 4
+        @Test
+        @DisplayName("Debe retornar la reserva al buscar por un ID válido")
+        void debeRetornarReservaPorId() {
+            // Arrange
+            UUID reservaId = UUID.randomUUID();
+            Reserva reservaMock = mock(Reserva.class);
+            ReservaResponse responseMock = mock(ReservaResponse.class);
+
+            when(reservaRepository.findById(reservaId)).thenReturn(Optional.of(reservaMock));
+            when(reservaMapper.toResponse(reservaMock)).thenReturn(responseMock);
+
+            // Act
+            ReservaResponse resultado = reservaService.obtenerPorId(reservaId);
+
+            // Assert
+            assertNotNull(resultado);
+            verify(reservaRepository, times(1)).findById(reservaId);
+            verify(reservaMapper, times(1)).toResponse(reservaMock);
+        }
+
+        // PRUEBA 5
+        @Test
+        @DisplayName("Debe lanzar RecursoNoEncontradoException cuando se consulta un ID que no existe")
+        void lanzaExcepcionAlBuscarReservaInexistente() {
+            // Arrange
+            UUID reservaId = UUID.randomUUID();
+            when(reservaRepository.findById(reservaId)).thenReturn(Optional.empty());
+
+            // Act & Assert
+            RecursoNoEncontradoException excepcion = assertThrows(RecursoNoEncontradoException.class, () -> {
+                reservaService.obtenerPorId(reservaId);
+            });
+
+            assertTrue(excepcion.getMessage().contains("Reserva"));
+            verify(reservaMapper, never()).toResponse(any(Reserva.class));
+        }
     }
 }
